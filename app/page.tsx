@@ -14,7 +14,7 @@ type Parameter = {
 
 type GeoSphereFeature = {
   properties: {
-    station: string;
+    station: string | number;
     parameters: Record<string, Parameter>;
   };
 };
@@ -34,8 +34,15 @@ type SnowDatum = Station & {
   temperature: number | null;
 };
 
+type WaterYearDatum = Station & {
+  current: number;
+  median: number;
+  ratio: number;
+};
+
 type Station = {
   id: string;
+  climateId?: string;
   de: string;
   en: string;
   state: string;
@@ -43,17 +50,18 @@ type Station = {
 };
 
 const API = "https://dataset.api.hub.geosphere.at/v1/station/historical/tawes-v1-10min";
+const CLIMATE_API = "https://dataset.api.hub.geosphere.at/v1/station/historical/klima-v2-1d";
 
 const RAIN_STATIONS: Station[] = [
-  { id: "11101", de: "Bregenz", en: "Bregenz", state: "Vorarlberg", altitude: 424 },
-  { id: "11320", de: "Innsbruck", en: "Innsbruck", state: "Tirol", altitude: 578 },
-  { id: "11350", de: "Salzburg", en: "Salzburg", state: "Salzburg", altitude: 419 },
-  { id: "11060", de: "Linz", en: "Linz", state: "Oberösterreich", altitude: 262 },
-  { id: "11389", de: "St. Pölten", en: "St. Pölten", state: "Niederösterreich", altitude: 274 },
-  { id: "11035", de: "Wien", en: "Vienna", state: "Wien", altitude: 198 },
-  { id: "11190", de: "Eisenstadt", en: "Eisenstadt", state: "Burgenland", altitude: 184 },
-  { id: "11240", de: "Graz", en: "Graz", state: "Steiermark", altitude: 340 },
-  { id: "11331", de: "Klagenfurt", en: "Klagenfurt", state: "Kärnten", altitude: 450 },
+  { id: "11101", climateId: "15", de: "Bregenz", en: "Bregenz", state: "Vorarlberg", altitude: 424 },
+  { id: "11320", climateId: "39", de: "Innsbruck", en: "Innsbruck", state: "Tirol", altitude: 578 },
+  { id: "11350", climateId: "145", de: "Salzburg", en: "Salzburg", state: "Salzburg", altitude: 419 },
+  { id: "11060", climateId: "56", de: "Linz", en: "Linz", state: "Oberösterreich", altitude: 262 },
+  { id: "11389", climateId: "93", de: "St. Pölten", en: "St. Pölten", state: "Niederösterreich", altitude: 274 },
+  { id: "11035", climateId: "105", de: "Wien", en: "Vienna", state: "Wien", altitude: 198 },
+  { id: "11190", climateId: "22", de: "Eisenstadt", en: "Eisenstadt", state: "Burgenland", altitude: 184 },
+  { id: "11240", climateId: "16400", de: "Graz", en: "Graz", state: "Steiermark", altitude: 340 },
+  { id: "11331", climateId: "48", de: "Klagenfurt", en: "Klagenfurt", state: "Kärnten", altitude: 450 },
 ];
 
 const SNOW_STATIONS: Station[] = [
@@ -80,6 +88,20 @@ const COPY = {
     rainTitle: "Niederschlag · letzte 24 Stunden",
     rainNote:
       "Je eine TAWES-Messstelle pro Bundesland. Die Auswahl ist ein Lagebild, kein flächengewichteter Österreich-Mittelwert. Summiert werden die veröffentlichten 10-Minuten-Werte; Lücken bleiben fehlend.",
+    yearTitle: "Niederschlag · Wasserjahr",
+    yearPeriod: "Seit 1. November bis {date}",
+    yearReference: "Median 1991–2020",
+    yearCurrent: "Dieses Wasserjahr",
+    yearCompared: "vom Median",
+    yearBands: {
+      below: "unter Vergleich",
+      near: "nahe Vergleich",
+      above: "über Vergleich",
+    },
+    yearNote:
+      "Qualitätsgeprüfte Tagessummen an denselben Standorten. Die Markierung zeigt 100 % des Medians aus 30 vergleichbaren Wasserjahren 1990/91 bis 2019/20. 90–110 % bedeutet hier nur „nahe am Vergleichswert“ und ist keine amtliche Dürreklassifikation.",
+    yearLoading: "Wasserjahr-Vergleich wird berechnet …",
+    yearError: "Der historische Vergleich ist gerade nicht verfügbar; die aktuellen Messungen bleiben davon unberührt.",
     snowTitle: "Schnee · aktuell",
     snowNote:
       "Gemessene Schneehöhe an den drei hoch gelegenen TAWES-Stationen, die derzeit einen Wert veröffentlichen. Schneehöhe ist nicht Schnee-Wasser-Äquivalent und wird hier nicht in Wasservolumen umgerechnet.",
@@ -96,7 +118,7 @@ const COPY = {
     state: "Bundesland",
     errorTitle: "Die Messwerte konnten gerade nicht geladen werden.",
     errorBody: "Die Seite zeigt keine gespeicherten Werte als aktuell an. Bitte später noch einmal versuchen.",
-    source: "Daten: GeoSphere Austria Dataset API (TAWES), CC BY 4.0.",
+    source: "Daten: GeoSphere Austria Dataset API (TAWES und klima-v2-1d), CC BY 4.0.",
     sister: "Schwesterprojekt",
     sisterLink: "Woher kommt der Strom?",
     privacy: "Keine Cookies, kein Tracking, kein Datenverkauf.",
@@ -119,6 +141,20 @@ const COPY = {
     rainTitle: "Precipitation · last 24 hours",
     rainNote:
       "One TAWES station per federal state. This is a snapshot, not an area-weighted Austrian average. Published 10-minute values are summed; gaps remain missing.",
+    yearTitle: "Precipitation · water year",
+    yearPeriod: "From 1 November to {date}",
+    yearReference: "1991–2020 median",
+    yearCurrent: "Current water year",
+    yearCompared: "of median",
+    yearBands: {
+      below: "below reference",
+      near: "near reference",
+      above: "above reference",
+    },
+    yearNote:
+      "Quality-controlled daily totals at the same locations. The marker is 100% of the median across 30 comparable water years from 1990/91 to 2019/20. Here, 90–110% only means “near the reference”; it is not an official drought classification.",
+    yearLoading: "Calculating the water-year comparison …",
+    yearError: "The historical comparison is currently unavailable; the live measurements are unaffected.",
     snowTitle: "Snow · current",
     snowNote:
       "Measured snow depth at the three high-elevation TAWES stations currently publishing a value. Snow depth is not snow-water equivalent and is not converted into water volume here.",
@@ -135,7 +171,7 @@ const COPY = {
     state: "State",
     errorTitle: "The measurements could not be loaded.",
     errorBody: "The page will not present stored values as current. Please try again later.",
-    source: "Data: GeoSphere Austria Dataset API (TAWES), CC BY 4.0.",
+    source: "Data: GeoSphere Austria Dataset API (TAWES and klima-v2-1d), CC BY 4.0.",
     sister: "Sister project",
     sisterLink: "Where does the electricity come from?",
     privacy: "No cookies, no tracking, no sale of data.",
@@ -152,6 +188,32 @@ function roundToTenMinutes(date: Date) {
 
 function apiTime(date: Date) {
   return date.toISOString().slice(0, 16);
+}
+
+function apiDate(date: Date) {
+  return date.toISOString().slice(0, 10);
+}
+
+function daysBetween(start: Date, end: Date) {
+  return Math.round((end.getTime() - start.getTime()) / 86_400_000) + 1;
+}
+
+function median(values: number[]) {
+  const sorted = [...values].sort((a, b) => a - b);
+  const middle = Math.floor(sorted.length / 2);
+  return sorted.length % 2 === 0
+    ? (sorted[middle - 1] + sorted[middle]) / 2
+    : sorted[middle];
+}
+
+function precipitationTotal(values: Array<number | null>) {
+  return values.reduce((sum: number, value) => (
+    Number.isFinite(value) ? sum + Math.max(0, value as number) : sum
+  ), 0);
+}
+
+function utcDate(value: string) {
+  return new Date(`${value.slice(0, 10)}T00:00:00Z`);
 }
 
 function lastFinite(values: Array<number | null> | undefined) {
@@ -173,10 +235,15 @@ export default function Home() {
   const [rain, setRain] = useState<RainDatum[]>([]);
   const [snow, setSnow] = useState<SnowDatum[]>([]);
   const [dataAt, setDataAt] = useState<Date | null>(null);
+  const [yearState, setYearState] = useState<FeedState>("loading");
+  const [waterYear, setWaterYear] = useState<WaterYearDatum[]>([]);
+  const [waterYearAt, setWaterYearAt] = useState<Date | null>(null);
   const copy = COPY[lang];
 
   useEffect(() => {
     const savedLang = window.localStorage.getItem("water-lang");
+    // These preferences exist only in the browser, so they are restored after SSR hydration.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (savedLang === "de" || savedLang === "en") setLang(savedLang);
     else if (navigator.language.toLowerCase().startsWith("en")) setLang("en");
 
@@ -266,6 +333,111 @@ export default function Home() {
     return () => { cancelled = true; };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadWaterYear() {
+      const now = new Date();
+      const targetEnd = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1));
+      const currentStartYear = targetEnd.getUTCMonth() >= 10
+        ? targetEnd.getUTCFullYear()
+        : targetEnd.getUTCFullYear() - 1;
+      const currentStart = new Date(Date.UTC(currentStartYear, 10, 1));
+      const climateIds = RAIN_STATIONS.map((station) => station.climateId).filter(Boolean).join(",");
+      const referenceEndYear = targetEnd.getUTCMonth() >= 10 ? 2019 : 2020;
+      const referenceEnd = new Date(Date.UTC(referenceEndYear, targetEnd.getUTCMonth(), targetEnd.getUTCDate()));
+
+      const currentQuery = new URLSearchParams({
+        parameters: "rr",
+        station_ids: climateIds,
+        start: apiDate(currentStart),
+        end: apiDate(targetEnd),
+        output_format: "geojson",
+      });
+      const referenceQuery = new URLSearchParams({
+        parameters: "rr",
+        station_ids: climateIds,
+        start: "1990-11-01",
+        end: apiDate(referenceEnd),
+        output_format: "geojson",
+      });
+
+      const [currentResponse, referenceResponse] = await Promise.all([
+        fetch(`${CLIMATE_API}?${currentQuery}`, { cache: "no-store" }),
+        fetch(`${CLIMATE_API}?${referenceQuery}`, { cache: "force-cache" }),
+      ]);
+      if (!currentResponse.ok || !referenceResponse.ok) throw new Error("Climate request failed");
+
+      const [currentJson, referenceJson] = await Promise.all([
+        currentResponse.json() as Promise<GeoSphereResponse>,
+        referenceResponse.json() as Promise<GeoSphereResponse>,
+      ]);
+      const currentById = new Map(currentJson.features.map((feature) => [String(feature.properties.station), feature]));
+      const referenceById = new Map(referenceJson.features.map((feature) => [String(feature.properties.station), feature]));
+
+      let latestIndex = -1;
+      for (let index = currentJson.timestamps.length - 1; index >= 0; index -= 1) {
+        const reporting = RAIN_STATIONS.filter((station) => {
+          const values = currentById.get(station.climateId ?? "")?.properties.parameters.rr?.data;
+          return Number.isFinite(values?.[index]);
+        }).length;
+        if (reporting >= 7) {
+          latestIndex = index;
+          break;
+        }
+      }
+      if (latestIndex < 0) throw new Error("No common daily data");
+
+      const latestDate = utcDate(currentJson.timestamps[latestIndex]);
+      const currentExpected = daysBetween(currentStart, latestDate);
+      const referenceTimestampIndex = new Map(
+        referenceJson.timestamps.map((timestamp, index) => [timestamp.slice(0, 10), index]),
+      );
+      const nextWaterYear = RAIN_STATIONS.flatMap((station) => {
+        const currentValues = currentById.get(station.climateId ?? "")?.properties.parameters.rr?.data.slice(0, latestIndex + 1) ?? [];
+        const currentPublished = currentValues.filter((value) => Number.isFinite(value)).length;
+        if (currentPublished / currentExpected < 0.95) return [];
+
+        const referenceValues = referenceById.get(station.climateId ?? "")?.properties.parameters.rr?.data ?? [];
+        const seasonTotals: number[] = [];
+
+        for (let startYear = 1990; startYear <= 2019; startYear += 1) {
+          const seasonStart = new Date(Date.UTC(startYear, 10, 1));
+          const endYear = latestDate.getUTCMonth() >= 10 ? startYear : startYear + 1;
+          const seasonEnd = new Date(Date.UTC(endYear, latestDate.getUTCMonth(), latestDate.getUTCDate()));
+          const startIndex = referenceTimestampIndex.get(apiDate(seasonStart));
+          const endIndex = referenceTimestampIndex.get(apiDate(seasonEnd));
+          if (startIndex == null || endIndex == null) continue;
+          const values = referenceValues.slice(startIndex, endIndex + 1);
+          const published = values.filter((value) => Number.isFinite(value)).length;
+          if (published / daysBetween(seasonStart, seasonEnd) < 0.98) continue;
+          seasonTotals.push(precipitationTotal(values));
+        }
+
+        if (seasonTotals.length !== 30) return [];
+        const current = precipitationTotal(currentValues);
+        const referenceMedian = median(seasonTotals);
+        return [{
+          ...station,
+          current,
+          median: referenceMedian,
+          ratio: referenceMedian > 0 ? (current / referenceMedian) * 100 : 0,
+        }];
+      });
+
+      if (nextWaterYear.length < 7) throw new Error("No complete water-year comparison");
+      if (cancelled) return;
+      setWaterYear(nextWaterYear);
+      setWaterYearAt(latestDate);
+      setYearState("ready");
+    }
+
+    loadWaterYear().catch(() => {
+      if (!cancelled) setYearState("error");
+    });
+    return () => { cancelled = true; };
+  }, []);
+
   const number = useMemo(
     () => new Intl.NumberFormat(lang === "de" ? "de-AT" : "en-GB", { maximumFractionDigits: 1, minimumFractionDigits: 1 }),
     [lang],
@@ -278,8 +450,13 @@ export default function Home() {
     () => new Intl.DateTimeFormat(lang === "de" ? "de-AT" : "en-GB", { dateStyle: "medium", timeStyle: "short", timeZone: "Europe/Vienna" }),
     [lang],
   );
+  const dateOnly = useMemo(
+    () => new Intl.DateTimeFormat(lang === "de" ? "de-AT" : "en-GB", { dateStyle: "medium", timeZone: "UTC" }),
+    [lang],
+  );
 
   const sortedRain = useMemo(() => [...rain].sort((a, b) => b.total - a.total), [rain]);
+  const sortedWaterYear = useMemo(() => [...waterYear].sort((a, b) => b.ratio - a.ratio), [waterYear]);
   const wettest = sortedRain[0];
   const rainyStations = rain.filter((station) => station.total >= 0.1).length;
   const snowWithDepth = snow.filter((station) => station.depth > 0).length;
@@ -289,6 +466,12 @@ export default function Home() {
     const next = lang === "de" ? "en" : "de";
     setLang(next);
     window.localStorage.setItem("water-lang", next);
+  }
+
+  function yearBand(ratio: number) {
+    if (ratio < 90) return { key: "below" as const, className: "below" };
+    if (ratio > 110) return { key: "above" as const, className: "above" };
+    return { key: "near" as const, className: "near" };
   }
 
   return (
@@ -374,6 +557,56 @@ export default function Home() {
               </table>
             </details>
           </section>
+
+          {yearState === "loading" ? (
+            <section aria-live="polite">
+              <h2>{copy.yearTitle}</h2>
+              <div className="year-loading"><span aria-hidden="true" />{copy.yearLoading}</div>
+            </section>
+          ) : null}
+
+          {yearState === "error" ? (
+            <section>
+              <h2>{copy.yearTitle}</h2>
+              <p className="note year-error">{copy.yearError}</p>
+            </section>
+          ) : null}
+
+          {yearState === "ready" && waterYearAt ? (
+            <section>
+              <div className="section-head">
+                <h2>{copy.yearTitle}</h2>
+                <span>{copy.yearPeriod.replace("{date}", dateOnly.format(waterYearAt))}</span>
+              </div>
+              <div className="year-legend" aria-hidden="true">
+                <span>{copy.yearCurrent}</span>
+                <span>{copy.yearReference}</span>
+              </div>
+              <div className="year-list">
+                {sortedWaterYear.map((station) => {
+                  const band = yearBand(station.ratio);
+                  return (
+                    <div className="year-row" key={station.id}>
+                      <div className="rain-name">
+                        <strong>{stationName(station, lang)}</strong>
+                        <span>{station.state}</span>
+                      </div>
+                      <div className={`year-track ${band.className}`} aria-hidden="true">
+                        <i style={{ width: `${Math.min(station.ratio, 150) / 1.5}%` }} />
+                        <b />
+                      </div>
+                      <div className="year-value">
+                        <strong>{integer.format(station.ratio)} <small>%</small><span className="visually-hidden"> {copy.yearCompared}</span></strong>
+                        <span>{number.format(station.current)} / {number.format(station.median)} mm</span>
+                      </div>
+                      <div className={`year-band ${band.className}`}>{copy.yearBands[band.key]}</div>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="note">{copy.yearNote}</p>
+            </section>
+          ) : null}
 
           <section>
             <h2>{copy.snowTitle}</h2>
