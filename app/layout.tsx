@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Wie viel Wasser hat Österreich?",
-  description: "Österreichs Wasserjahr: Flüsse live, Schnee und Grundwasser im saisonalen Zusammenhang.",
+  description: "Aktuelle Niederschlags- und Schneemessungen aus offenen Daten von GeoSphere Austria.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
