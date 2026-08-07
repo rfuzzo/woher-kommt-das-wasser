@@ -385,17 +385,17 @@ export default function Home() {
       };
 
       const next = json.features.flatMap((feature) => {
-        const props = feature.properties;
-        const flow = Number(props.wert);
-        const at = props.zeitpunkt ? new Date(String(props.zeitpunkt)) : null;
+        const attrs = feature.properties;
+        const flow = Number(attrs.wert);
+        const at = attrs.zeitpunkt ? new Date(String(attrs.zeitpunkt)) : null;
         // A gauge without a published reading is dropped, never shown as zero.
         if (!Number.isFinite(flow) || !at || Number.isNaN(at.getTime())) return [];
         return [{
-          hzbnr: Number(props.hzbnr),
-          river: String(props.gewaesser ?? ""),
-          station: String(props.messstelle ?? ""),
+          hzbnr: Number(attrs.hzbnr),
+          river: String(attrs.gewaesser ?? ""),
+          station: String(attrs.messstelle ?? ""),
           flow,
-          unit: String(props.einheit ?? "m³/s"),
+          unit: String(attrs.einheit ?? "m³/s"),
           at,
         }];
       });
