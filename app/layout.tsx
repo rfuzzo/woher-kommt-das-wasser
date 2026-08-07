@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Wie viel Wasser hat Österreich?",
-  description: "Aktuelle Niederschlags- und Schneemessungen aus offenen Daten von GeoSphere Austria.",
+  description: "Aktuelle Niederschlags-, Abfluss-, Schnee- und Grundwassermessungen aus offenen österreichischen Daten.",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

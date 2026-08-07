@@ -12,6 +12,11 @@
   --snow: #8ebfe8;
   --dry: #a8683e;
   --good: #23815f;
+  --gw-very-high: #6420a0;
+  --gw-high: #1686d9;
+  --gw-middle: #47d864;
+  --gw-low: #f28b2c;
+  --gw-very-low: #e51e1e;
   --radius: 10px;
 }
 
@@ -184,7 +189,34 @@ th { color: var(--ink-muted); font-size: 11px; font-weight: 600; letter-spacing:
 .snow-value small { color: var(--ink-2); font-size: 13px; font-weight: 500; }
 .snow-meta { display: flex; flex-wrap: wrap; gap: 4px 14px; margin-top: 8px; color: var(--ink-2); font-size: 11px; }
 
-.limits { display: grid; grid-template-columns: minmax(150px, .55fr) minmax(300px, 1.45fr) auto; align-items: start; gap: 22px; }
+.groundwater-intro { max-width: 76ch; margin: 0 0 18px; color: var(--ink-2); font-size: 14px; }
+.groundwater-levels { display: grid; grid-template-columns: repeat(3, 1fr); overflow: hidden; border: 1px solid var(--hairline); border-radius: 8px; background: var(--hairline); gap: 1px; }
+.groundwater-level { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; min-width: 0; gap: 10px 14px; background: var(--surface); padding: 14px 16px; color: var(--ink); font-size: 13px; }
+.groundwater-label { display: flex; align-items: center; min-width: 0; gap: 11px; }
+.groundwater-level > strong { font-size: 19px; font-variant-numeric: tabular-nums; }
+.groundwater-mark { display: block; flex: 0 0 auto; width: 14px; height: 14px; border: 2px solid #161616; border-radius: 2px; transform: rotate(45deg); }
+.groundwater-mark.very-high { background: var(--gw-very-high); }
+.groundwater-mark.high { background: var(--gw-high); }
+.groundwater-mark.middle { background: var(--gw-middle); }
+.groundwater-mark.low { background: var(--gw-low); }
+.groundwater-mark.very-low { background: var(--gw-very-low); }
+.groundwater-mark.unavailable { border-color: var(--ink-2); background: var(--surface); }
+.groundwater-share { overflow: hidden; height: 4px; border-radius: 4px; background: var(--surface-2); }
+.groundwater-share i { display: block; min-width: 0; height: 100%; border-radius: inherit; }
+.groundwater-share i.very-high { background: var(--gw-very-high); }
+.groundwater-share i.high { background: var(--gw-high); }
+.groundwater-share i.middle { background: var(--gw-middle); }
+.groundwater-share i.low { background: var(--gw-low); }
+.groundwater-share i.very-low { background: var(--gw-very-low); }
+.groundwater-share i.unavailable { background: var(--ink-muted); }
+.groundwater-percent { color: var(--ink-muted); font-size: 11px; font-variant-numeric: tabular-nums; }
+.groundwater-total { margin: 10px 0 0; color: var(--ink-muted); font-size: 11px; }
+.groundwater-explainer { display: grid; grid-template-columns: minmax(300px, 1fr) auto; align-items: start; gap: 28px; margin-top: 18px; }
+.groundwater-explainer p { max-width: 78ch; margin: 0 0 7px; color: var(--ink-2); font-size: 13px; }
+.groundwater-explainer .groundwater-disclosure { color: var(--ink-muted); }
+.groundwater-explainer a { color: var(--water); font-size: 13px; font-weight: 600; white-space: nowrap; }
+
+.limits { display: grid; grid-template-columns: minmax(150px, .55fr) minmax(300px, 1.45fr); align-items: start; gap: 22px; }
 .limits > h2 { margin: 2px 0 0; }
 .limits p { max-width: 70ch; margin: 0; color: var(--ink-2); font-size: 14px; }
 .limits a { color: var(--water); font-size: 13px; font-weight: 600; white-space: nowrap; }
@@ -204,6 +236,8 @@ footer a { color: var(--ink-2); }
   .tile { min-height: 0; border-right: 0; border-bottom: 1px solid var(--hairline); }
   .tile:last-child { border-bottom: 0; }
   .snow-grid { grid-template-columns: 1fr; }
+  .groundwater-levels { grid-template-columns: repeat(2, 1fr); }
+  .groundwater-explainer { grid-template-columns: 1fr; gap: 10px; }
   .limits { grid-template-columns: 1fr; gap: 10px; }
 }
 
@@ -221,6 +255,8 @@ footer a { color: var(--ink-2); }
   .year-track { grid-column: 1 / -1; grid-row: 2; }
   .year-value { grid-column: 2; grid-row: 1; }
   .year-band { grid-column: 1; grid-row: 3; margin-top: -3px; }
+  .groundwater-levels { grid-template-columns: 1fr; }
+  .groundwater-level { padding: 12px 14px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

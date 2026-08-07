@@ -1,0 +1,13 @@
+{
+  "generatedAt": "2026-08-07T22:55:13.361Z",
+  "latest": "2026-08-06",
+  "stale": 4,
+  "counts": {
+    "veryHigh": 0,
+    "high": 0,
+    "middle": 9,
+    "low": 104,
+    "veryLow": 115,
+    "unavailable": 1
+  }
+}

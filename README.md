@@ -12,9 +12,9 @@ Live site: [rfuzzo.github.io/woher-kommt-das-wasser](https://rfuzzo.github.io/wo
 - **Water-year precipitation since 1 November** at the same locations, compared with the median of 30 matching periods ending from 1991 through 2020.
 - **Current snow depth** at the three high-elevation TAWES stations that currently publish the `SCHNEE` parameter, with station elevation and air temperature.
 - **River discharge** at one gauge per major river, each the furthest downstream inside Austria, from the ministry's Downloaddienst Hydrographie Österreich.
-- A clear boundary around what is missing: groundwater is published but not yet interpretable — see the note below.
+- **Current groundwater classification** across all stations published by the ministry's download service, using eHYD's documented station-relative legend. Counts are a station snapshot, not an area-weighted national value.
 
-The browser fetches GeoSphere Austria's TAWES and quality-controlled `klima-v2-1d` endpoints, and the hydrographic download service, directly. It sums published 10-minute precipitation readings and rejects a station when fewer than 120 values are present in the 24-hour window. Missing values are never converted to zero.
+The browser fetches GeoSphere Austria's TAWES and quality-controlled `klima-v2-1d` endpoints, and the river collection, directly. It sums published 10-minute precipitation readings and rejects a station when fewer than 120 values are present in the 24-hour window. Missing values are never converted to zero. Because the groundwater collection does not currently send browser CORS headers, the Pages workflow refreshes a same-origin summary from that official feed every day.
 
 ## Data verification
 
@@ -59,23 +59,19 @@ This is what the discharge panel now uses. It is documented, it carries a
 published contract, and it makes the internal `pegelBgis` interface
 unnecessary here.
 
-### Why groundwater is still not shown
+### 8 August 2026 — groundwater classification added
 
-The service publishes it, so machine-readability is no longer the obstacle.
-The obstacle is interpretation. `wert` is a level in metres above sea level,
-which is not comparable between stations — 171 m at one site and 262 m at
-another says nothing about which is low. The only comparative signal is
-`farbcode`, a colour per station (on 7 August: 115 red, 104 orange, 9 green).
+eHYD's official legend documents the meaning of the `farbcode` supplied by
+`i000501:grundwasser_aktuell`: very high, high, middle, low, very low, or no
+reliable long-term comparison. The class is relative to each station's own
+seasonal history, so the widget counts stations in each class but never
+compares their absolute elevations or turns them into a national total.
 
-Those class boundaries are not documented anywhere the service exposes. The
-WMS `GetLegendGraphic` for the layer returns a single generic symbol, and the
-colours are applied by eHYD's own client. Red plausibly means low, and Austria
-is in drought, so the guess would probably even be right — which is exactly
-what makes publishing it a bad idea. A guessed legend on 229 stations would
-read as authoritative and could not be checked by a reader.
-
-Groundwater goes in when the classification is documented, or when a source
-publishes a comparable measure such as depth below a long-term reference.
+The documented boundaries are −25 to +25% for middle, ±25 to ±100% for high
+or low, and beyond the historically observed range for that calendar day for
+very high or very low. At least five archive years are required. The feed's
+`transp` flag marks readings older than ten days; the widget reports that count
+separately.
 
 Public GeoSphere data is CC BY 4.0. eHYD data, where used, is CC BY 4.0 with
 attribution to `ehyd.gv.at`.
@@ -94,4 +90,4 @@ pnpm run dev:pages
 pnpm run build:pages
 ```
 
-Pushes to `main` publish `dist-pages` through the repository's GitHub Pages workflow.
+Pushes to `main` publish `dist-pages` through the repository's GitHub Pages workflow. A daily scheduled run refreshes the groundwater summary before publishing.

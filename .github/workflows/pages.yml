@@ -3,6 +3,8 @@ name: Deploy static site to Pages
 on:
   push:
     branches: [main]
+  schedule:
+    - cron: "35 11 * * *"
   workflow_dispatch:
 
 permissions:
@@ -31,6 +33,9 @@ jobs:
           cache: pnpm
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+      - name: Refresh groundwater snapshot
+        if: github.event_name == 'schedule'
+        run: node scripts/fetch-groundwater.mjs static-site/public/data/groundwater.json
       - name: Check source
         run: pnpm run lint
       - name: Build static site

@@ -88,10 +88,36 @@ const SNOW_STATIONS: Station[] = [
   { id: "11216", de: "Kanzelhöhe", en: "Kanzelhöhe", state: "Kärnten", altitude: 1520 },
 ];
 
+const GROUNDWATER_LEVELS = ["veryHigh", "high", "middle", "low", "veryLow", "unavailable"] as const;
+const GROUNDWATER_CLASSES = {
+  veryHigh: "very-high",
+  high: "high",
+  middle: "middle",
+  low: "low",
+  veryLow: "very-low",
+  unavailable: "unavailable",
+} as const;
+type GroundwaterLevel = (typeof GROUNDWATER_LEVELS)[number];
+type GroundwaterCounts = Record<GroundwaterLevel, number>;
+type GroundwaterSnapshot = {
+  counts: GroundwaterCounts;
+  latest: string | null;
+  stale: number;
+};
+
+const EMPTY_GROUNDWATER_COUNTS: GroundwaterCounts = {
+  veryHigh: 0,
+  high: 0,
+  middle: 0,
+  low: 0,
+  veryLow: 0,
+  unavailable: 0,
+};
+
 const COPY = {
   de: {
     title: "Wie viel Wasser hat Österreich?",
-    sub: "Was offizielle Messstellen gerade über Regen und Schnee zeigen — aus offenen Daten.",
+    sub: "Was offizielle Messstellen gerade über Regen, Abfluss, Schnee und Grundwasser zeigen — aus offenen Daten.",
     loading: "Messwerte werden geladen …",
     updated: "Stand",
     sourceAge: "direkt von GeoSphere Austria",
@@ -130,20 +156,41 @@ const COPY = {
     snowTitle: "Schnee · aktuell",
     snowNote:
       "Gemessene Schneehöhe an den drei hoch gelegenen TAWES-Stationen, die derzeit einen Wert veröffentlichen. Schneehöhe ist nicht Schnee-Wasser-Äquivalent und wird hier nicht in Wasservolumen umgerechnet.",
+    groundwaterTitle: "Grundwasser · eHYD-Klassifikation",
+    groundwaterLoading: "Grundwasserstände werden geladen …",
+    groundwaterError: "Die Grundwasser-Einordnung ist gerade nicht verfügbar; die übrigen Messungen bleiben davon unberührt.",
+    groundwaterStations: "Messstellen",
+    groundwaterStale: "{n} Werte sind älter als zehn Tage.",
+    groundwaterIntro:
+      "eHYD ordnet jede Messstelle relativ zu ihrem eigenen jahreszeitlichen Verlauf ein. Die Farben vergleichen daher keine absoluten Pegelhöhen zwischen Orten.",
+    groundwaterLevels: {
+      veryHigh: "Sehr hoher Stand",
+      high: "Hoher Stand",
+      middle: "Mittlerer Stand",
+      low: "Niedriger Stand",
+      veryLow: "Sehr niedriger Stand",
+      unavailable: "Kein belastbarer Vergleich",
+    },
+    groundwaterMethod:
+      "Mittel: −25 bis +25 %. Hoch oder niedrig: ±25 bis ±100 %. Sehr hoch oder sehr niedrig: außerhalb des bisher für diesen Kalendertag beobachteten Schwankungsbereichs.",
+    groundwaterAge:
+      "Ein Vergleich erscheint erst ab fünf Jahren Archivdaten. Transparente Symbole auf der eHYD-Karte bedeuten: letzter Wert älter als zehn Tage.",
+    groundwaterOpen: "Aktuelle Grundwasserkarte öffnen",
+    groundwaterDisclosure:
+      "Die Verteilung zählt aktuelle Messstellen des amtlichen Downloaddienstes. Für die statische Seite wird der Feed täglich zusammengefasst. Sie ist ein Stationslagebild, kein flächengewichteter Österreich-Wert.",
     altitude: "Seehöhe",
     air: "Luft",
     noTemp: "Temperatur fehlt",
-    limitsTitle: "Was noch fehlt",
+    limitsTitle: "Grenzen der Darstellung",
     limitsBody:
-      "Eine einzige belastbare Zahl für Österreichs verfügbares Wasser gibt es nicht. Grundwasser fehlt hier weiterhin: Der Downloaddienst liefert zwar 229 Messstellen, aber als Pegelstand in Metern über Adria, und die sind zwischen Standorten nicht vergleichbar. Die einzige vergleichende Angabe ist ein Farbcode, dessen Klassengrenzen der Dienst nicht dokumentiert. Eine geratene Legende wäre hier schlechter als eine Lücke.",
-    rivers: "Grundwasser bei eHYD ansehen",
+      "Eine einzige belastbare Zahl für Österreichs verfügbares Wasser gibt es nicht. Niederschlag, Abfluss, Schnee und Grundwasser beschreiben unterschiedliche Teile des Wasserkreislaufs; ihre Messstellen dürfen weder addiert noch als gleichmäßig über Österreich verteilt gelesen werden.",
     tableToggle: "Werte als Tabelle",
     place: "Messstelle",
     rain: "Niederschlag",
     state: "Bundesland",
     errorTitle: "Die Messwerte konnten gerade nicht geladen werden.",
     errorBody: "Die Seite zeigt keine gespeicherten Werte als aktuell an. Bitte später noch einmal versuchen.",
-    source: "Daten: GeoSphere Austria Dataset API (TAWES und klima-v2-1d), CC BY 4.0. Abfluss: Downloaddienst Hydrographie Österreich, CC BY 4.0 — Datenquelle: ehyd.gv.at.",
+    source: "Daten: GeoSphere Austria Dataset API (TAWES und klima-v2-1d), CC BY 4.0. Abfluss und Grundwasser: Downloaddienst Hydrographie Österreich, CC BY 4.0 — Datenquelle: ehyd.gv.at.",
     sister: "Schwesterprojekt",
     sisterLink: "Woher kommt der Strom?",
     privacy: "Keine Cookies, kein Tracking, kein Datenverkauf.",
@@ -151,7 +198,7 @@ const COPY = {
   },
   en: {
     title: "How much water does Austria have?",
-    sub: "What official stations currently show about rain and snow — from open data.",
+    sub: "What official stations currently show about rain, discharge, snow and groundwater — from open data.",
     loading: "Loading measurements …",
     updated: "As of",
     sourceAge: "directly from GeoSphere Austria",
@@ -190,20 +237,41 @@ const COPY = {
     snowTitle: "Snow · current",
     snowNote:
       "Measured snow depth at the three high-elevation TAWES stations currently publishing a value. Snow depth is not snow-water equivalent and is not converted into water volume here.",
+    groundwaterTitle: "Groundwater · eHYD classification",
+    groundwaterLoading: "Loading groundwater levels …",
+    groundwaterError: "The groundwater classification is currently unavailable; the other measurements are unaffected.",
+    groundwaterStations: "stations",
+    groundwaterStale: "{n} readings are more than ten days old.",
+    groundwaterIntro:
+      "eHYD classifies every station against its own seasonal history. The colours therefore do not compare absolute water levels between locations.",
+    groundwaterLevels: {
+      veryHigh: "Very high level",
+      high: "High level",
+      middle: "Middle level",
+      low: "Low level",
+      veryLow: "Very low level",
+      unavailable: "No reliable comparison",
+    },
+    groundwaterMethod:
+      "Middle: −25 to +25%. High or low: ±25 to ±100%. Very high or very low: outside the range previously observed for that calendar day.",
+    groundwaterAge:
+      "A comparison appears only after five years of archive data. Transparent symbols on the eHYD map mean the latest value is more than ten days old.",
+    groundwaterOpen: "Open the current groundwater map",
+    groundwaterDisclosure:
+      "The distribution counts current stations in the official download service. The feed is summarised daily for this static site. It is a station snapshot, not an area-weighted value for Austria.",
     altitude: "Elevation",
     air: "Air",
     noTemp: "Temperature missing",
-    limitsTitle: "What is still missing",
+    limitsTitle: "Limits of this picture",
     limitsBody:
-      "There is no single defensible number for Austria's available water. Groundwater is still absent here: the download service does publish 229 stations, but as a level in metres above sea level, which is not comparable between sites. The only comparative signal is a colour code whose class boundaries the service does not document. A guessed legend would be worse than a gap.",
-    rivers: "View groundwater at eHYD",
+      "There is no single defensible number for Austria's available water. Precipitation, discharge, snow and groundwater describe different parts of the water cycle; their stations must not be added together or read as evenly distributed across Austria.",
     tableToggle: "View values as a table",
     place: "Station",
     rain: "Precipitation",
     state: "State",
     errorTitle: "The measurements could not be loaded.",
     errorBody: "The page will not present stored values as current. Please try again later.",
-    source: "Data: GeoSphere Austria Dataset API (TAWES and klima-v2-1d), CC BY 4.0. Discharge: Downloaddienst Hydrographie Österreich, CC BY 4.0 — Datenquelle: ehyd.gv.at.",
+    source: "Data: GeoSphere Austria Dataset API (TAWES and klima-v2-1d), CC BY 4.0. Discharge and groundwater: Downloaddienst Hydrographie Österreich, CC BY 4.0 — Datenquelle: ehyd.gv.at.",
     sister: "Sister project",
     sisterLink: "Where does the electricity come from?",
     privacy: "No cookies, no tracking, no sale of data.",
@@ -272,6 +340,10 @@ export default function Home() {
   const [waterYearAt, setWaterYearAt] = useState<Date | null>(null);
   const [riverState, setRiverState] = useState<FeedState>("loading");
   const [rivers, setRivers] = useState<RiverDatum[]>([]);
+  const [groundwaterState, setGroundwaterState] = useState<FeedState>("loading");
+  const [groundwaterCounts, setGroundwaterCounts] = useState<GroundwaterCounts>(EMPTY_GROUNDWATER_COUNTS);
+  const [groundwaterAt, setGroundwaterAt] = useState<Date | null>(null);
+  const [groundwaterStale, setGroundwaterStale] = useState(0);
   const copy = COPY[lang];
 
   useEffect(() => {
@@ -518,6 +590,33 @@ export default function Home() {
     return () => { cancelled = true; };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadGroundwater() {
+      // GitHub Pages refreshes this same-origin summary every day. The source
+      // API permits downloads but currently omits browser CORS headers.
+      const snapshotUrl = new URL("./data/groundwater.json", window.location.href);
+      const response = await fetch(snapshotUrl, { cache: "no-store" });
+      if (!response.ok) throw new Error("Groundwater request failed");
+      const snapshot = (await response.json()) as GroundwaterSnapshot;
+      const total = GROUNDWATER_LEVELS.reduce((sum, level) => sum + Number(snapshot.counts[level] ?? 0), 0);
+      if (!total) throw new Error("No groundwater stations");
+      const latest = snapshot.latest ? new Date(`${snapshot.latest}T00:00:00Z`) : null;
+
+      if (cancelled) return;
+      setGroundwaterCounts(snapshot.counts);
+      setGroundwaterAt(latest);
+      setGroundwaterStale(snapshot.stale);
+      setGroundwaterState("ready");
+    }
+
+    loadGroundwater().catch(() => {
+      if (!cancelled) setGroundwaterState("error");
+    });
+    return () => { cancelled = true; };
+  }, []);
+
   const number = useMemo(
     () => new Intl.NumberFormat(lang === "de" ? "de-AT" : "en-GB", { maximumFractionDigits: 1, minimumFractionDigits: 1 }),
     [lang],
@@ -544,6 +643,8 @@ export default function Home() {
   const maxFlow = Math.max(...rivers.map((river) => river.flow), 1);
   const riverAt = rivers.reduce<Date | null>(
     (newest, river) => (newest && newest >= river.at ? newest : river.at), null);
+  const groundwaterTotal = GROUNDWATER_LEVELS.reduce(
+    (total, level) => total + groundwaterCounts[level], 0);
 
   function toggleLang() {
     const next = lang === "de" ? "en" : "de";
@@ -754,10 +855,53 @@ export default function Home() {
         </>
       ) : null}
 
+      <section className="groundwater-section">
+        <div className="section-head">
+          <h2>{copy.groundwaterTitle}</h2>
+          {groundwaterState === "ready" && groundwaterAt ? (
+            <span className="panel-stamp">{copy.updated} {dateOnly.format(groundwaterAt)}</span>
+          ) : null}
+        </div>
+        <p className="groundwater-intro">{copy.groundwaterIntro}</p>
+        {groundwaterState === "loading" ? <p className="year-loading">{copy.groundwaterLoading}</p> : null}
+        {groundwaterState === "error" ? <p className="year-error">{copy.groundwaterError}</p> : null}
+        {groundwaterState === "ready" ? (
+          <>
+            <div className="groundwater-levels">
+              {GROUNDWATER_LEVELS.map((level) => {
+                const count = groundwaterCounts[level];
+                const share = groundwaterTotal ? (count / groundwaterTotal) * 100 : 0;
+                return (
+                  <div className="groundwater-level" key={level}>
+                    <div className="groundwater-label">
+                      <span className={`groundwater-mark ${GROUNDWATER_CLASSES[level]}`} aria-hidden="true" />
+                      <span>{copy.groundwaterLevels[level]}</span>
+                    </div>
+                    <strong>{integer.format(count)}</strong>
+                    <div className="groundwater-share" aria-hidden="true">
+                      <i className={GROUNDWATER_CLASSES[level]} style={{ width: `${share}%` }} />
+                    </div>
+                    <span className="groundwater-percent">{number.format(share)} %</span>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="groundwater-total">{integer.format(groundwaterTotal)} {copy.groundwaterStations}{groundwaterStale ? ` · ${copy.groundwaterStale.replace("{n}", integer.format(groundwaterStale))}` : ""}</p>
+          </>
+        ) : null}
+        <div className="groundwater-explainer">
+          <div>
+            <p>{copy.groundwaterMethod}</p>
+            <p>{copy.groundwaterAge}</p>
+            <p className="groundwater-disclosure">{copy.groundwaterDisclosure}</p>
+          </div>
+          <a href="https://ehyd.gv.at/" target="_blank" rel="noreferrer">{copy.groundwaterOpen} ↗</a>
+        </div>
+      </section>
+
       <section className="limits">
         <h2>{copy.limitsTitle}</h2>
         <p>{copy.limitsBody}</p>
-        <a href="https://ehyd.gv.at/?g_card=pegelaktuell%23" target="_blank" rel="noreferrer">{copy.rivers} ↗</a>
       </section>
 
       <footer>
