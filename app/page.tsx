@@ -143,7 +143,7 @@ const COPY = {
     state: "Bundesland",
     errorTitle: "Die Messwerte konnten gerade nicht geladen werden.",
     errorBody: "Die Seite zeigt keine gespeicherten Werte als aktuell an. Bitte später noch einmal versuchen.",
-    source: "Daten: GeoSphere Austria Dataset API (TAWES und klima-v2-1d), CC BY 4.0. Abfluss: Downloaddienst Hydrographie Österreich, Datenquelle ehyd.gv.at, CC BY 4.0.",
+    source: "Daten: GeoSphere Austria Dataset API (TAWES und klima-v2-1d), CC BY 4.0. Abfluss: Downloaddienst Hydrographie Österreich, CC BY 4.0 — Datenquelle: ehyd.gv.at.",
     sister: "Schwesterprojekt",
     sisterLink: "Woher kommt der Strom?",
     privacy: "Keine Cookies, kein Tracking, kein Datenverkauf.",
@@ -203,7 +203,7 @@ const COPY = {
     state: "State",
     errorTitle: "The measurements could not be loaded.",
     errorBody: "The page will not present stored values as current. Please try again later.",
-    source: "Data: GeoSphere Austria Dataset API (TAWES and klima-v2-1d), CC BY 4.0. Discharge: Downloaddienst Hydrographie Österreich, source ehyd.gv.at, CC BY 4.0.",
+    source: "Data: GeoSphere Austria Dataset API (TAWES and klima-v2-1d), CC BY 4.0. Discharge: Downloaddienst Hydrographie Österreich, CC BY 4.0 — Datenquelle: ehyd.gv.at.",
     sister: "Sister project",
     sisterLink: "Where does the electricity come from?",
     privacy: "No cookies, no tracking, no sale of data.",
@@ -761,7 +761,7 @@ export default function Home() {
       </section>
 
       <footer>
-        <p>{copy.source}</p>
+        <p>{copy.source.split("ehyd.gv.at")[0]}<a href="https://ehyd.gv.at">ehyd.gv.at</a>{copy.source.split("ehyd.gv.at")[1] ?? ""}</p>
         <p>{copy.sister}: <a href="https://rfuzzo.github.io/woher-kommt-der-strom/">{copy.sisterLink}</a> · {copy.privacy}</p>
       </footer>
     </main>
