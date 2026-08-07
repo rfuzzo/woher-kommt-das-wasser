@@ -40,6 +40,15 @@ type WaterYearDatum = Station & {
   ratio: number;
 };
 
+type RiverDatum = {
+  hzbnr: number;
+  river: string;
+  station: string;
+  flow: number;
+  unit: string;
+  at: Date;
+};
+
 type Station = {
   id: string;
   climateId?: string;
@@ -51,6 +60,15 @@ type Station = {
 
 const API = "https://dataset.api.hub.geosphere.at/v1/station/historical/tawes-v1-10min";
 const CLIMATE_API = "https://dataset.api.hub.geosphere.at/v1/station/historical/klima-v2-1d";
+// Downloaddienst Hydrographie Österreich — the ministry's OGC API Features
+// service, registered in the INSPIRE catalogue. This is the documented route
+// to the same gauges eHYD's own map draws, and unlike eHYD's internal
+// interface it publishes ISO timestamps and permits cross-origin reads.
+const HYDRO_API = "https://gis.lfrz.gv.at/api/geodata/i000501/ogc/features/v1/collections/i000501:pegel_aktuell/items";
+
+// One gauge per major river, each the furthest downstream inside Austria, so
+// the reading is what the river carries as it leaves the country.
+const RIVER_GAUGES = [200014, 201889, 203539, 205922, 207373, 211490, 213595] as const;
 
 const RAIN_STATIONS: Station[] = [
   { id: "11101", climateId: "15", de: "Bregenz", en: "Bregenz", state: "Vorarlberg", altitude: 424 },
@@ -102,6 +120,13 @@ const COPY = {
       "Qualitätsgeprüfte Tagessummen an denselben Standorten. Die Markierung zeigt 100 % des Medians aus 30 vergleichbaren Wasserjahren 1990/91 bis 2019/20. 90–110 % bedeutet hier nur „nahe am Vergleichswert“ und ist keine amtliche Dürreklassifikation.",
     yearLoading: "Wasserjahr-Vergleich wird berechnet …",
     yearError: "Der historische Vergleich ist gerade nicht verfügbar; die aktuellen Messungen bleiben davon unberührt.",
+    riverTitle: "Abfluss · Flüsse",
+    riverNote:
+      "Je ein Pegel pro Fluss, jeweils der unterste in Österreich, also das, was der Fluss beim Verlassen des Landes führt. Momentanwerte des Downloaddienstes Hydrographie Österreich, nicht Tagesmittel. Ein Vergleich mit dem langjährigen Mittel steht über diese Schnittstelle nicht zur Verfügung und wird deshalb hier nicht behauptet.",
+    riverLoading: "Abflusswerte werden geladen …",
+    riverError: "Der Abfluss ist gerade nicht verfügbar; die Niederschlagsmessungen bleiben davon unberührt.",
+    river: "Abfluss",
+    gauge: "Pegel",
     snowTitle: "Schnee · aktuell",
     snowNote:
       "Gemessene Schneehöhe an den drei hoch gelegenen TAWES-Stationen, die derzeit einen Wert veröffentlichen. Schneehöhe ist nicht Schnee-Wasser-Äquivalent und wird hier nicht in Wasservolumen umgerechnet.",
@@ -110,15 +135,15 @@ const COPY = {
     noTemp: "Temperatur fehlt",
     limitsTitle: "Was noch fehlt",
     limitsBody:
-      "Eine einzige belastbare Zahl für Österreichs verfügbares Wasser gibt es nicht. Abfluss und Grundwasser gehören dazu, aber eHYD liefert über die bisherige Schnittstelle derzeit keine maschinenlesbaren Messwerte. Diese Seite zeigt sie erst wieder, wenn die Quelle verifiziert ist.",
-    rivers: "Flüsse bei eHYD ansehen",
+      "Eine einzige belastbare Zahl für Österreichs verfügbares Wasser gibt es nicht. Grundwasser fehlt hier weiterhin: Der Downloaddienst liefert zwar 229 Messstellen, aber als Pegelstand in Metern über Adria, und die sind zwischen Standorten nicht vergleichbar. Die einzige vergleichende Angabe ist ein Farbcode, dessen Klassengrenzen der Dienst nicht dokumentiert. Eine geratene Legende wäre hier schlechter als eine Lücke.",
+    rivers: "Grundwasser bei eHYD ansehen",
     tableToggle: "Werte als Tabelle",
     place: "Messstelle",
     rain: "Niederschlag",
     state: "Bundesland",
     errorTitle: "Die Messwerte konnten gerade nicht geladen werden.",
     errorBody: "Die Seite zeigt keine gespeicherten Werte als aktuell an. Bitte später noch einmal versuchen.",
-    source: "Daten: GeoSphere Austria Dataset API (TAWES und klima-v2-1d), CC BY 4.0.",
+    source: "Daten: GeoSphere Austria Dataset API (TAWES und klima-v2-1d), CC BY 4.0. Abfluss: Downloaddienst Hydrographie Österreich, Datenquelle ehyd.gv.at, CC BY 4.0.",
     sister: "Schwesterprojekt",
     sisterLink: "Woher kommt der Strom?",
     privacy: "Keine Cookies, kein Tracking, kein Datenverkauf.",
@@ -155,6 +180,13 @@ const COPY = {
       "Quality-controlled daily totals at the same locations. The marker is 100% of the median across 30 comparable water years from 1990/91 to 2019/20. Here, 90–110% only means “near the reference”; it is not an official drought classification.",
     yearLoading: "Calculating the water-year comparison …",
     yearError: "The historical comparison is currently unavailable; the live measurements are unaffected.",
+    riverTitle: "Discharge · rivers",
+    riverNote:
+      "One gauge per river, each the furthest downstream inside Austria — what the river carries as it leaves the country. These are instantaneous readings from the Downloaddienst Hydrographie Österreich, not daily means. A comparison against the long-term average is not available through this interface, so none is claimed here.",
+    riverLoading: "Loading discharge …",
+    riverError: "Discharge is currently unavailable; the precipitation measurements are unaffected.",
+    river: "Discharge",
+    gauge: "Gauge",
     snowTitle: "Snow · current",
     snowNote:
       "Measured snow depth at the three high-elevation TAWES stations currently publishing a value. Snow depth is not snow-water equivalent and is not converted into water volume here.",
@@ -163,15 +195,15 @@ const COPY = {
     noTemp: "Temperature missing",
     limitsTitle: "What is still missing",
     limitsBody:
-      "There is no single defensible number for Austria's available water. River flow and groundwater belong in the picture, but eHYD's former interface is not currently returning machine-readable measurements. This page will only show them again after the source is verified.",
-    rivers: "View rivers at eHYD",
+      "There is no single defensible number for Austria's available water. Groundwater is still absent here: the download service does publish 229 stations, but as a level in metres above sea level, which is not comparable between sites. The only comparative signal is a colour code whose class boundaries the service does not document. A guessed legend would be worse than a gap.",
+    rivers: "View groundwater at eHYD",
     tableToggle: "View values as a table",
     place: "Station",
     rain: "Precipitation",
     state: "State",
     errorTitle: "The measurements could not be loaded.",
     errorBody: "The page will not present stored values as current. Please try again later.",
-    source: "Data: GeoSphere Austria Dataset API (TAWES and klima-v2-1d), CC BY 4.0.",
+    source: "Data: GeoSphere Austria Dataset API (TAWES and klima-v2-1d), CC BY 4.0. Discharge: Downloaddienst Hydrographie Österreich, source ehyd.gv.at, CC BY 4.0.",
     sister: "Sister project",
     sisterLink: "Where does the electricity come from?",
     privacy: "No cookies, no tracking, no sale of data.",
@@ -238,6 +270,8 @@ export default function Home() {
   const [yearState, setYearState] = useState<FeedState>("loading");
   const [waterYear, setWaterYear] = useState<WaterYearDatum[]>([]);
   const [waterYearAt, setWaterYearAt] = useState<Date | null>(null);
+  const [riverState, setRiverState] = useState<FeedState>("loading");
+  const [rivers, setRivers] = useState<RiverDatum[]>([]);
   const copy = COPY[lang];
 
   useEffect(() => {
@@ -329,6 +363,52 @@ export default function Home() {
 
     load().catch(() => {
       if (!cancelled) setState("error");
+    });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadRivers() {
+      // CQL2 keeps this to the seven gauges rather than pulling all 300.
+      const query = new URLSearchParams({
+        f: "json",
+        limit: "50",
+        "filter-lang": "cql2-text",
+        filter: `hzbnr IN (${RIVER_GAUGES.join(",")})`,
+      });
+      const response = await fetch(`${HYDRO_API}?${query}`, { cache: "no-store" });
+      if (!response.ok) throw new Error("Hydrographie request failed");
+      const json = (await response.json()) as {
+        features: Array<{ properties: Record<string, string | number | null> }>;
+      };
+
+      const next = json.features.flatMap((feature) => {
+        const props = feature.properties;
+        const flow = Number(props.wert);
+        const at = props.zeitpunkt ? new Date(String(props.zeitpunkt)) : null;
+        // A gauge without a published reading is dropped, never shown as zero.
+        if (!Number.isFinite(flow) || !at || Number.isNaN(at.getTime())) return [];
+        return [{
+          hzbnr: Number(props.hzbnr),
+          river: String(props.gewaesser ?? ""),
+          station: String(props.messstelle ?? ""),
+          flow,
+          unit: String(props.einheit ?? "m³/s"),
+          at,
+        }];
+      });
+
+      if (!next.length) throw new Error("No published gauges");
+      if (cancelled) return;
+      next.sort((a, b) => b.flow - a.flow);
+      setRivers(next);
+      setRiverState("ready");
+    }
+
+    loadRivers().catch(() => {
+      if (!cancelled) setRiverState("error");
     });
     return () => { cancelled = true; };
   }, []);
@@ -461,6 +541,9 @@ export default function Home() {
   const rainyStations = rain.filter((station) => station.total >= 0.1).length;
   const snowWithDepth = snow.filter((station) => station.depth > 0).length;
   const maxRain = Math.max(...rain.map((station) => station.total), 1);
+  const maxFlow = Math.max(...rivers.map((river) => river.flow), 1);
+  const riverAt = rivers.reduce<Date | null>(
+    (newest, river) => (newest && newest >= river.at ? newest : river.at), null);
 
   function toggleLang() {
     const next = lang === "de" ? "en" : "de";
@@ -607,6 +690,50 @@ export default function Home() {
               <p className="note">{copy.yearNote}</p>
             </section>
           ) : null}
+
+          <section>
+            <div className="section-head">
+              <h2>{copy.riverTitle}</h2>
+              {riverState === "ready" && riverAt ? (
+                <span className="panel-stamp">{copy.updated} {dateTime.format(riverAt)}</span>
+              ) : null}
+            </div>
+            {riverState === "loading" ? <p className="year-loading">{copy.riverLoading}</p> : null}
+            {riverState === "error" ? <p className="year-error">{copy.riverError}</p> : null}
+            {riverState === "ready" ? (
+              <>
+                <div className="rain-list">
+                  {rivers.map((river) => (
+                    <div className="rain-row" key={river.hzbnr}>
+                      <div className="rain-name">
+                        <strong>{river.river}</strong>
+                        <span>{river.station}</span>
+                      </div>
+                      <div className="rain-track" aria-hidden="true">
+                        <i style={{ width: `${(river.flow / maxFlow) * 100}%` }} />
+                      </div>
+                      <div className="rain-value">{number.format(river.flow)} <small>{river.unit}</small></div>
+                    </div>
+                  ))}
+                </div>
+                <p className="note">{copy.riverNote}</p>
+                <details>
+                  <summary>{copy.tableToggle}</summary>
+                  <table>
+                    <thead><tr><th>{copy.place}</th><th>{copy.gauge}</th><th className="numeric">{copy.river}</th></tr></thead>
+                    <tbody>
+                      {rivers.map((river) => (
+                        <tr key={river.hzbnr}>
+                          <td>{river.river}</td><td>{river.station}</td>
+                          <td className="numeric">{number.format(river.flow)} {river.unit}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </details>
+              </>
+            ) : null}
+          </section>
 
           <section>
             <h2>{copy.snowTitle}</h2>

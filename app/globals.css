@@ -226,3 +226,11 @@ footer a { color: var(--ink-2); }
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+
+/* Panel-level timestamp: the discharge feed is a different service from the
+   GeoSphere one in the header and carries its own reading time. */
+.panel-stamp {
+  font-size: 0.78rem;
+  color: var(--ink-muted);
+  font-variant-numeric: tabular-nums;
+}
